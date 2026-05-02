@@ -1,0 +1,13 @@
+{
+  "name": "@cehizlik/types",
+  "private": true,
+  "version": "0.1.0",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "echo types-build",
+    "lint": "echo types-lint",
+    "typecheck": "echo types-typecheck",
+    "format": "echo types-format"
+  }
+}

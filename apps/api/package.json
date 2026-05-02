@@ -1,0 +1,33 @@
+{
+  "name": "@cehizlik/api",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "format": "echo api-format",
+    "db:generate": "prisma generate --schema=prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
+    "db:seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@cehizlik/types": "workspace:*",
+    "@prisma/client": "6.6.0",
+    "bcryptjs": "2.4.3",
+    "express": "4.21.2",
+    "jsonwebtoken": "9.0.2"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "2.4.6",
+    "@types/express": "5.0.1",
+    "@types/jsonwebtoken": "9.0.9",
+    "@types/node": "22.15.3",
+    "prisma": "6.6.0",
+    "tsconfig-paths": "4.2.0",
+    "tsx": "4.19.3",
+    "typescript": "5.8.3"
+  }
+}

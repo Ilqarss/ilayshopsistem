@@ -1,0 +1,237 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Qeyd: SQLite enum dəstəkləmir – String + tətbiq səviyyəsindəki yoxlama ─
+// ADMIN, SELLER, TAILOR
+// WAITING, IN_PROGRESS, READY
+// CURTAIN, JALOUSIE, OTHER
+// CASH, CARD, TRANSFER
+
+model User {
+  id           String    @id @default(cuid())
+  fullName     String
+  username     String    @unique
+  phone        String    @unique
+  passwordHash String
+  role         String    @default("SELLER")  // ADMIN | SELLER | TAILOR
+  commission   Float     @default(0)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sessions     Session[]
+  sales        Sale[]
+  tailorOrders TailorOrder[]
+  expenses     Expense[]
+
+  @@map("users")
+}
+
+model Session {
+  id               String   @id @default(cuid())
+  userId           String
+  refreshTokenHash String
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("sessions")
+}
+
+model Product {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  nameAz       String
+  productType  String   @default("OTHER")   // CURTAIN | JALOUSIE | OTHER
+  unit         String   @default("ədəd")
+  costPrice    Float    @default(0)
+  marginPct    Float    @default(0)
+  salePrice    Float
+  stock        Float    @default(0)
+  minStock     Float    @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  saleItems    SaleItem[]
+  movements    StockMovement[]
+  tailorOrders TailorOrder[]
+
+  @@map("products")
+}
+
+model StockMovement {
+  id          String   @id @default(cuid())
+  productId   String
+  delta       Float
+  beforeStock Float
+  afterStock  Float
+  reason      String?
+  referenceId String?
+  createdAt   DateTime @default(now())
+
+  product     Product  @relation(fields: [productId], references: [id])
+
+  @@index([productId, createdAt])
+  @@map("stock_movements")
+}
+
+model Customer {
+  id          String   @id @default(cuid())
+  name        String
+  phone       String   @unique
+  address     String?
+  notes       String?
+  totalDebt   Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sales        Sale[]
+  measurements CustomerMeasurement[]
+
+  @@map("customers")
+}
+
+model CustomerMeasurement {
+  id         String   @id @default(cuid())
+  customerId String
+  roomName   String
+  width      Float
+  height     Float
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("customer_measurements")
+}
+
+model Sale {
+  id           String   @id @default(cuid())
+  saleNumber   String   @unique @default(cuid())
+  sellerId     String
+  customerId   String?
+  subtotal     Float
+  discountPct  Float    @default(0)
+  discountAmt  Float    @default(0)
+  total        Float
+  deposit      Float    @default(0)
+  debt         Float    @default(0)
+  profitAmt    Float    @default(0)
+  note         String?
+  receiptWidth String   @default("80mm")
+  soldAt       DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  seller       User       @relation(fields: [sellerId], references: [id])
+  customer     Customer?  @relation(fields: [customerId], references: [id])
+  items        SaleItem[]
+  payments     SalePayment[]
+  tailorOrders TailorOrder[]
+
+  @@index([sellerId, soldAt])
+  @@map("sales")
+}
+
+model SaleItem {
+  id              String   @id @default(cuid())
+  saleId          String
+  productId       String
+  productNameSnap String
+  productCodeSnap String
+  unitSnap        String
+  salePriceSnap   Float
+  costPriceSnap   Float    @default(0)
+  meters          Float?
+  buzmeFactor     Float?
+  widthM          Float?
+  heightM         Float?
+  squareM         Float?
+  quantity        Float    @default(1)
+  lineTotal       Float
+  discountAmt     Float    @default(0)
+  createdAt       DateTime @default(now())
+
+  sale            Sale        @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product         Product     @relation(fields: [productId], references: [id])
+  tailorOrder     TailorOrder?
+
+  @@index([saleId])
+  @@map("sale_items")
+}
+
+model SalePayment {
+  id          String   @id @default(cuid())
+  saleId      String
+  paymentType String   @default("CASH")   // CASH | CARD | TRANSFER
+  amount      Float
+  note        String?
+  paidAt      DateTime @default(now())
+
+  sale        Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@map("sale_payments")
+}
+
+model TailorOrder {
+  id          String   @id @default(cuid())
+  saleId      String?
+  saleItemId  String?  @unique
+  tailorId    String?
+  productId   String?
+  customNote  String?
+  width       Float?
+  height      Float?
+  meters      Float?
+  buzmeFactor Float?
+  model       String?
+  color       String?
+  status      String   @default("WAITING")  // WAITING | IN_PROGRESS | READY
+  stitchType  String   @default("straight") // straight | buzme
+  bonusPerUnit Float   @default(0.03) // duz=0.03 qepik, buzme=0.06 qepik
+  totalBonus  Float    @default(0)
+  dueDate     DateTime?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sale        Sale?     @relation(fields: [saleId], references: [id])
+  saleItem    SaleItem? @relation(fields: [saleItemId], references: [id])
+  tailor      User?     @relation(fields: [tailorId], references: [id])
+  product     Product?  @relation(fields: [productId], references: [id])
+
+  @@index([tailorId, status])
+  @@map("tailor_orders")
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  category    String
+  amount      Float
+  description String?
+  recordedBy  String
+  expenseDate DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [recordedBy], references: [id])
+
+  @@index([expenseDate])
+  @@map("expenses")
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}

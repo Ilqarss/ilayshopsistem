@@ -1,0 +1,12 @@
+{
+  "name": "@cehizlik/worker",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "node src/index.js",
+    "build": "echo worker-build",
+    "lint": "echo worker-lint",
+    "typecheck": "echo worker-typecheck",
+    "format": "echo worker-format"
+  }
+}
