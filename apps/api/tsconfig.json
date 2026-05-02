@@ -1,1 +1,23 @@
-{ "compilerOptions": { "skipLibCheck": true }, "include": [] }
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "target": "ES2022",
+    "types": ["node"],
+    "baseUrl": "../..",
+    "paths": {
+      "@cehizlik/types": ["packages/types/src"],
+      "@cehizlik/utils": ["packages/utils/src"],
+      "@cehizlik/config": ["packages/config/src"]
+    },
+    "strict": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": ["src/**/*.ts"]
+}
