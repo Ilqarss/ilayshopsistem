@@ -1,19 +1,18 @@
 import { Router, type Request, type Response } from "express";
 import { prisma } from "../../db";
 import { authenticate, requirePermission } from "../../middleware/auth";
-import type { UserRole } from "@cehizlik/types";
 
 const router = Router();
 router.use(authenticate);
 
-// ─── Anbar siyahısı ───────────────────────────────────────────────────────────
+// --- Anbar siyahisi ---
 router.get("/", requirePermission("inventory:read"), async (req: Request, res: Response): Promise<void> => {
   const { q, type, page = "1", limit = "50" } = req.query as Record<string, string>;
   const skip = (Number(page) - 1) * Number(limit);
-  const isAdmin = (req.user!.role as UserRole) === "ADMIN";
+  const isAdmin = (req as any).user?.role === "ADMIN";
 
   try {
-    const where: Record<string, unknown> = { isActive: true };
+    const where: any = { isActive: true };
     if (q) where.OR = [{ nameAz: { contains: q } }, { code: { contains: q } }];
     if (type) where.productType = type;
 
@@ -26,7 +25,6 @@ router.get("/", requirePermission("inventory:read"), async (req: Request, res: R
         select: {
           id: true, code: true, nameAz: true, productType: true,
           unit: true, salePrice: true, stock: true, minStock: true, isActive: true,
-          // Alış qiymətini yalnız Admin görür
           ...(isAdmin ? { costPrice: true, marginPct: true } : {})
         }
       }),
@@ -35,46 +33,44 @@ router.get("/", requirePermission("inventory:read"), async (req: Request, res: R
 
     res.json({ success: true, data: { items, total } });
   } catch {
-    res.status(500).json({ success: false, error: "Anbar alınmadı" });
+    res.status(500).json({ success: false, error: "Anbar alinmadi" });
   }
 });
 
-// ─── Tək məhsul ───────────────────────────────────────────────────────────────
+// --- Tek mehsul ---
 router.get("/:id", requirePermission("inventory:read"), async (req: Request, res: Response): Promise<void> => {
-  const isAdmin = (req.user!.role as UserRole) === "ADMIN";
+  const isAdmin = (req as any).user?.role === "ADMIN";
   try {
-    const product = await prisma.product.findUnique({
+    const product: any = await prisma.product.findUnique({
       where: { id: req.params.id },
       include: {
         movements: { orderBy: { createdAt: "desc" }, take: 30 }
       }
     });
     if (!product) {
-      res.status(404).json({ success: false, error: "Məhsul tapılmadı" });
+      res.status(404).json({ success: false, error: "Mehsul tapilmadi" });
       return;
     }
     if (!isAdmin) {
-      const { costPrice: _c, marginPct: _m, ...safe } = product as typeof product & { costPrice: unknown; marginPct: unknown };
-      void _c; void _m;
+      const { costPrice: _c, marginPct: _m, ...safe } = product;
       res.json({ success: true, data: safe });
       return;
     }
     res.json({ success: true, data: product });
   } catch {
-    res.status(500).json({ success: false, error: "Məhsul alınmadı" });
+    res.status(500).json({ success: false, error: "Mehsul alinmadi" });
   }
 });
 
-// ─── Yeni məhsul ──────────────────────────────────────────────────────────────
+// --- Yeni mehsul ---
 router.post("/", requirePermission("inventory:write"), async (req: Request, res: Response): Promise<void> => {
-  const { code, nameAz, productType, unit, costPrice, marginPct, salePrice, stock, minStock } = req.body as Record<string, unknown>;
+  const { code, nameAz, productType, unit, costPrice, marginPct, salePrice, stock, minStock } = req.body as any;
 
   if (!nameAz || salePrice === undefined) {
-    res.status(400).json({ success: false, error: "Ad və satış qiyməti tələb olunur" });
+    res.status(400).json({ success: false, error: "Ad ve satis qiymeti teleb olunur" });
     return;
   }
 
-  // Kod boşdursa avtomatik yarat
   let finalCode = code ? String(code) : "";
   if (!finalCode) {
     const count = await prisma.product.count();
@@ -87,8 +83,8 @@ router.post("/", requirePermission("inventory:write"), async (req: Request, res:
       data: {
         code: finalCode,
         nameAz: String(nameAz),
-        productType: String(productType ?? "OTHER") as "CURTAIN" | "JALOUSIE" | "OTHER",
-        unit: String(unit ?? "ədəd"),
+        productType: String(productType ?? "OTHER") as any,
+        unit: String(unit ?? "eded"),
         costPrice: Number(costPrice ?? 0),
         marginPct: Number(marginPct ?? 0),
         salePrice: Number(salePrice),
@@ -104,31 +100,30 @@ router.post("/", requirePermission("inventory:write"), async (req: Request, res:
           delta: Number(stock ?? 0),
           beforeStock: 0,
           afterStock: Number(stock ?? 0),
-          reason: "İlkin stok"
+          reason: "Ilkin stok"
         }
       });
     }
 
     res.status(201).json({ success: true, data: product });
-  } catch (e) {
-    const err = e as { code?: string };
-    if (err.code === "P2002") {
-      res.status(409).json({ success: false, error: "Bu kod artıq mövcuddur" });
+  } catch (e: any) {
+    if (e?.code === "P2002") {
+      res.status(409).json({ success: false, error: "Bu kod artiq movcuddur" });
       return;
     }
-    res.status(500).json({ success: false, error: "Məhsul yaradılmadı" });
+    res.status(500).json({ success: false, error: "Mehsul yaradilmadi" });
   }
 });
 
-// ─── Məhsul yenilə ────────────────────────────────────────────────────────────
+// --- Mehsul yenile ---
 router.patch("/:id", requirePermission("inventory:write"), async (req: Request, res: Response): Promise<void> => {
-  const { nameAz, productType, unit, costPrice, marginPct, salePrice, minStock, isActive } = req.body as Record<string, unknown>;
+  const { nameAz, productType, unit, costPrice, marginPct, salePrice, minStock, isActive } = req.body as any;
   try {
     const product = await prisma.product.update({
       where: { id: req.params.id },
       data: {
         nameAz: nameAz ? String(nameAz) : undefined,
-        productType: productType ? String(productType) as "CURTAIN" | "JALOUSIE" | "OTHER" : undefined,
+        productType: productType ? String(productType) as any : undefined,
         unit: unit ? String(unit) : undefined,
         costPrice: costPrice !== undefined ? Number(costPrice) : undefined,
         marginPct: marginPct !== undefined ? Number(marginPct) : undefined,
@@ -139,21 +134,21 @@ router.patch("/:id", requirePermission("inventory:write"), async (req: Request, 
     });
     res.json({ success: true, data: product });
   } catch {
-    res.status(500).json({ success: false, error: "Məhsul yenilənmədi" });
+    res.status(500).json({ success: false, error: "Mehsul yenilenmedi" });
   }
 });
 
-// ─── Stok düzəlişi (manual) ───────────────────────────────────────────────────
+// --- Stok duzelisi ---
 router.post("/adjust", requirePermission("inventory:write"), async (req: Request, res: Response): Promise<void> => {
-  const { productId, delta, reason } = req.body as { productId?: string; delta?: number; reason?: string };
+  const { productId, delta, reason } = req.body as any;
   if (!productId || delta === undefined) {
-    res.status(400).json({ success: false, error: "Məhsul ID və dəyişim tələb olunur" });
+    res.status(400).json({ success: false, error: "Mehsul ID ve deyisim teleb olunur" });
     return;
   }
   try {
-    const product = await prisma.product.findUnique({ where: { id: productId } });
+    const product: any = await prisma.product.findUnique({ where: { id: productId } });
     if (!product) {
-      res.status(404).json({ success: false, error: "Məhsul tapılmadı" });
+      res.status(404).json({ success: false, error: "Mehsul tapilmadi" });
       return;
     }
     const newStock = Math.max(0, product.stock + Number(delta));
@@ -165,27 +160,22 @@ router.post("/adjust", requirePermission("inventory:write"), async (req: Request
           delta: Number(delta),
           beforeStock: product.stock,
           afterStock: newStock,
-          reason: reason ?? "Manual düzəliş"
+          reason: reason ?? "Manual duzelis"
         }
       })
     ]);
     res.json({ success: true, data: { newStock } });
   } catch {
-    res.status(500).json({ success: false, error: "Stok düzəlişi alınmadı" });
+    res.status(500).json({ success: false, error: "Stok duzelisi alinmadi" });
   }
 });
 
-// ─── CSV/Excel import (Access-dən gelen: Kod, Ad, Alış, Faiz, Satış, Qalıq, Vahidi) ───
+// --- CSV/Excel import ---
 router.post("/import", requirePermission("inventory:import"), async (req: Request, res: Response): Promise<void> => {
-  const { rows } = req.body as {
-    rows?: Array<{
-      code: string; nameAz: string; costPrice?: number; marginPct?: number;
-      salePrice: number; stock?: number; unit?: string; productType?: string;
-    }>;
-  };
+  const { rows } = req.body as any;
 
   if (!rows || !Array.isArray(rows) || rows.length === 0) {
-    res.status(400).json({ success: false, error: "Data sətirləri tələb olunur" });
+    res.status(400).json({ success: false, error: "Data setirleri teleb olunur" });
     return;
   }
 
@@ -204,8 +194,8 @@ router.post("/import", requirePermission("inventory:import"), async (req: Reques
             marginPct: Number(row.marginPct ?? 0),
             salePrice: Number(row.salePrice),
             stock: Number(row.stock ?? 0),
-            unit: row.unit ?? "ədəd",
-            productType: (row.productType ?? "OTHER") as "CURTAIN" | "JALOUSIE" | "OTHER"
+            unit: row.unit ?? "eded",
+            productType: (row.productType ?? "OTHER") as any
           }
         });
         updated++;
@@ -214,8 +204,8 @@ router.post("/import", requirePermission("inventory:import"), async (req: Reques
           data: {
             code: String(row.code),
             nameAz: row.nameAz,
-            productType: (row.productType ?? "OTHER") as "CURTAIN" | "JALOUSIE" | "OTHER",
-            unit: row.unit ?? "ədəd",
+            productType: (row.productType ?? "OTHER") as any,
+            unit: row.unit ?? "eded",
             costPrice: Number(row.costPrice ?? 0),
             marginPct: Number(row.marginPct ?? 0),
             salePrice: Number(row.salePrice),
@@ -226,32 +216,32 @@ router.post("/import", requirePermission("inventory:import"), async (req: Reques
       }
     } catch {
       errors++;
-      errorList.push(`${row.code}: import xətası`);
+      errorList.push(`${row.code}: import xetasi`);
     }
   }
 
   res.json({ success: true, data: { created, updated, errors, errorList } });
 });
 
-// ─── Aşağı stok ───────────────────────────────────────────────────────────────
+// --- Asagi stok ---
 router.get("/status/low-stock", requirePermission("inventory:read"), async (_req: Request, res: Response): Promise<void> => {
   try {
-    const items = await prisma.product.findMany({
+    const items: any[] = await prisma.product.findMany({
       where: { isActive: true },
       select: { id: true, code: true, nameAz: true, unit: true, stock: true, minStock: true }
     });
     const low = items.filter((p: any) => p.stock <= p.minStock);
     res.json({ success: true, data: { items: low } });
   } catch {
-    res.status(500).json({ success: false, error: "Aşağı stok alınmadı" });
+    res.status(500).json({ success: false, error: "Asagi stok alinmadi" });
   }
 });
 
-// ─── Mal silmə (yalnız Admin) ──────────────────────────────────────────────────
+// --- Mal silme (yalniz Admin) ---
 router.delete("/:id", requirePermission("inventory:write"), async (req: Request, res: Response): Promise<void> => {
-  const isAdmin = (req.user!.role as UserRole) === "ADMIN";
+  const isAdmin = (req as any).user?.role === "ADMIN";
   if (!isAdmin) {
-    res.status(403).json({ success: false, error: "Yalnız admin malı silə bilər" });
+    res.status(403).json({ success: false, error: "Yalniz admin mali sile biler" });
     return;
   }
 
@@ -262,7 +252,7 @@ router.delete("/:id", requirePermission("inventory:write"), async (req: Request,
     });
     res.json({ success: true, data: { message: "Mal silindi" } });
   } catch {
-    res.status(500).json({ success: false, error: "Mal silinmədi" });
+    res.status(500).json({ success: false, error: "Mal silinmedi" });
   }
 });
 
