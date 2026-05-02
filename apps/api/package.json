@@ -2,17 +2,16 @@
   "name": "@cehizlik/api",
   "private": true,
   "version": "0.1.0",
-  "scripts": {
+"scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "exit 0",
     "start": "node dist/server.js",
-    "lint": "exit 0",
     "lint": "exit 0",
     "format": "echo api-format",
     "db:generate": "exit 0",
     "db:migrate": "exit 0",
     "db:seed": "exit 0"
-  "postinstall": "exit 0"},
+  }
   "dependencies": {
     "@cehizlik/types": "workspace:*",
     "@prisma/client": "6.6.0",
