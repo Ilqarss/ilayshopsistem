@@ -240,7 +240,7 @@ router.get("/status/low-stock", requirePermission("inventory:read"), async (_req
       where: { isActive: true },
       select: { id: true, code: true, nameAz: true, unit: true, stock: true, minStock: true }
     });
-    const low = items.filter(p => p.stock <= p.minStock);
+    const low = items.filter((p: any) => p.stock <= p.minStock);
     res.json({ success: true, data: { items: low } });
   } catch {
     res.status(500).json({ success: false, error: "Aşağı stok alınmadı" });
